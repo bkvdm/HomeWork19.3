@@ -21,66 +21,64 @@ public class Main {
         return scanner.nextLine();
     }
 
-    public static boolean validateLoginPassword(String loginOrPassword) {
+    public static boolean validateLoginPassword(String currentLogin, String currentPassword) {
+        boolean loginMatch = currentLogin.length() <= 20 && currentLogin.matches("[a-zA-Z0-9_]+");
+        boolean passwordMatch = currentPassword.length() <= 20 && currentPassword.matches("[a-zA-Z0-9_]+");
+
         try {
-            if (loginOrPassword.length() > 20) {
-                throw new WrongMethodTypeException("Длина строки не должна превышать 20 символов");
-            }
-            if (!loginOrPassword.matches("[a-zA-Z0-9_]+")) {
-                throw new WrongMethodTypeException("Строка может содержать только латинские буквы, цифры и знак подчеркивания");
-            }
+            if (loginMatch && passwordMatch) {
             return true;
+            }
         } catch (WrongMethodTypeException e) {
-            System.out.println("Ошибка валидации: " + e.getMessage());
-            return false;
+            throw new RuntimeException(e);
         }
+        return false;
     }
 
-    public static boolean loginConfirmation(String[][] users, String userLogin, String userPassword) {
-        boolean userVerified = false;
+    public static boolean loginConfirmation(String currentLogin, String currentPassword, User[] users) {
+
         try {
             for (int i = 0; i < users.length; i++) {
-                if (userLogin.equals(users[i][0]) && userPassword.equals(users[i][1])) {
-                    userVerified = true;
-                } else {
-                    if (i == users.length - 1) {
-                        throw new WrongMethodTypeException("Пользователь с таким логином и паролем не найден в системе. Или не верны имя пользователя или пароль. Повторите попытку");
-                    }
+                if (currentLogin.equals(users[i].getLogin()) && currentPassword.equals(users[i].getPassword())) {
+                    return true;
                 }
             }
-        } catch (WrongMethodTypeException e) {
-            System.out.println("Ошибка авторизации: " + e.getMessage());
+        } catch (WrongUserLoginPasswordException e) {
+            System.out.println("Повторите попытку входа в систему");
+            throw new RuntimeException(e);
+        } finally {
+            System.out.println("Повторите попытку регистрации в системе");
         }
-        return userVerified;
+        return false;
     }
 
     public static void main(String[] args) {
-        int totalSystemUsers = scannerTotalSystemUsers();
-        String[][] users = new String[totalSystemUsers][2];
-        String userLogin = null;
-        String userPassword = null;
+
+        System.out.println("Регистрация пользователей в системе");
+
+        User[] users = new User[scannerTotalSystemUsers()];
         for (int i = 0; i < users.length; i++) {
-            userLogin = scannerUserLogin();
-            if (validateLoginPassword(userLogin)) {
-                users[i][0] = userLogin;
-            } else break;
-            userPassword = scannerUserPassword();
-            if (validateLoginPassword(userPassword)) {
-                users[i][1] = userPassword;
-            } else break;
-            if (i < users.length && i != users.length - 1) {
-                System.out.println("Зарегистрируйте следующего пользователя");
-            } else if (i == users.length - 1) {
-                System.out.println("Все пользователи из " + users.length + " возможных, зарегистрированы");
+            String currentLogin = scannerUserLogin();
+            String currentPassword = scannerUserPassword();
+            if (validateLoginPassword(currentLogin, currentPassword)) {
+                users[i] = new User(currentLogin, currentPassword);
+            } else {
+                throw new WrongUserLoginPasswordException("Регистрация не возможна. " +
+                        "Для регистрации требуется, одновременное соблюдение условий: "
+                        + "1) длина строки логина и пароля не должна превышать 20 символов; " +
+                        "2) строка может содержать только латинские буквы, цифры и знак подчеркивания;");
             }
         }
-        while (loginConfirmation(users, userLogin, userPassword) || !loginConfirmation(users, userLogin, userPassword)) {
-            System.out.println("Авторизация в системе");
-            userLogin = scannerUserLogin();
-            userPassword = scannerUserPassword();
-            if (loginConfirmation(users, userLogin, userPassword)) {
-                System.out.println("Добро пожаловать " + userLogin + "! Вы авторизованы в системе ");
-            }
+
+        System.out.println("Вход в систему зарегистрированным пользователям");
+
+        String currentLogin = scannerUserLogin();
+        String currentPassword = scannerUserPassword();
+
+        if (loginConfirmation(currentLogin, currentPassword, users)) {
+            System.out.println("Добро пожаловать! Вы авторизованы в системе");
+        } else {
+            throw new WrongUserLoginPasswordException("Не верны: логин или пароль. Доступ заблокирован");
         }
     }
 }
